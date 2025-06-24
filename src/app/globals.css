@@ -1,26 +1,64 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@custom-variant dark (&:is(.dark *));
+@plugin "daisyui" {
+  themes: evilwizard --default, dark --prefersdark, evilwizard;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@plugin "daisyui/theme" {
+  name: "evilwizard";
+  default: false;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(98% 0 0);
+  --color-base-200: oklch(96% 0.001 286.375);
+  --color-base-300: oklch(92% 0.004 286.32);
+  --color-base-content: oklch(21% 0.006 285.885);
+  --color-primary: oklch(51% 0.262 276.966);
+  --color-primary-content: oklch(96% 0.018 272.314);
+  --color-secondary: oklch(54% 0.245 262.881);
+  --color-secondary-content: oklch(97% 0.014 254.604);
+  --color-accent: oklch(54% 0.281 293.009);
+  --color-accent-content: oklch(96% 0.016 293.756);
+  --color-neutral: oklch(27% 0.006 286.033);
+  --color-neutral-content: oklch(98% 0 0);
+  --color-info: oklch(58% 0.158 241.966);
+  --color-info-content: oklch(97% 0.013 236.62);
+  --color-success: oklch(59% 0.145 163.225);
+  --color-success-content: oklch(97% 0.021 166.113);
+  --color-warning: oklch(68% 0.162 75.834);
+  --color-warning-content: oklch(98% 0.026 102.212);
+  --color-error: oklch(57% 0.245 27.325);
+  --color-error-content: oklch(97% 0.013 17.38);
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.25rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* noto-sans-regular - latin */
+@font-face {
+  font-display: swap;
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/noto-sans-v39-latin-regular.woff2") format("woff2");
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* open-sans-regular - latin */
+@font-face {
+  font-display: swap;
+  font-family: "Open Sans";
+  font-style: normal; 
+  font-weight: 400;
+  src: url("/fonts/open-sans-v43-latin-regular.woff2") format("woff2");
+}
+
+@theme {
+  --font-openSans: "Open Sans";
+  --font-notoSans: "Noto Sans";
 }

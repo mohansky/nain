@@ -1,0 +1,279 @@
+'use client';
+
+// src/hooks/useActivities.ts
+import { useState, useEffect } from 'react';
+import { useSession } from '@/lib/auth-client';
+import { getErrorMessage } from '@/lib/utils';
+
+// Types
+type ActivityCategory = 
+  | 'play' 
+  | 'learning' 
+  | 'exercise' 
+  | 'meal' 
+  | 'sleep' 
+  | 'medical' 
+  | 'social' 
+  | 'creative' 
+  | 'outdoor' 
+  | 'other';
+
+interface Activity {
+  id: string;
+  childId: string;
+  title: string;
+  description?: string;
+  duration?: number;
+  category: ActivityCategory;
+  recordedAt: Date;
+  image?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Additional fields from API joins
+  childName?: string;
+  childProfileImage?: string;
+}
+
+interface CreateActivityRequest {
+  childId: string;
+  title: string;
+  description?: string;
+  duration?: number;
+  category: ActivityCategory;
+  recordedAt: Date | string;
+  image?: string | null;
+}
+
+interface UpdateActivityRequest {
+  title?: string;
+  description?: string;
+  duration?: number;
+  category?: ActivityCategory;
+  recordedAt?: Date | string;
+  image?: string | null;
+}
+
+interface UseActivitiesReturn {
+  activities: Activity[];
+  isLoading: boolean;
+  error: string | null;
+  addActivity: (activityData: CreateActivityRequest) => Promise<boolean>;
+  updateActivity: (id: string, activityData: UpdateActivityRequest) => Promise<boolean>;
+  deleteActivity: (id: string) => Promise<boolean>;
+  refetch: () => void;
+  getActivitiesByChild: (childId: string) => Activity[];
+  getActivitiesByCategory: (category: ActivityCategory) => Activity[];
+  getActivitiesByDateRange: (startDate: Date, endDate: Date) => Activity[];
+}
+
+export function useActivities(): UseActivitiesReturn {
+  const { data: session } = useSession();
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchActivities = async () => {
+    if (!session?.user) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch('/api/activities');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch activities');
+      }
+
+      const data = await response.json();
+      
+      // Convert date strings to Date objects
+      const processedActivities = (data.activities || []).map((activity: any) => ({
+        ...activity,
+        recordedAt: new Date(activity.recordedAt),
+        createdAt: new Date(activity.createdAt),
+        updatedAt: new Date(activity.updatedAt),
+      }));
+
+      setActivities(processedActivities);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addActivity = async (activityData: CreateActivityRequest): Promise<boolean> => {
+    try {
+      setError(null);
+      
+      // Prepare data for API
+      const requestData = {
+        ...activityData,
+        recordedAt: activityData.recordedAt instanceof Date 
+          ? activityData.recordedAt.toISOString() 
+          : activityData.recordedAt,
+      };
+
+      const response = await fetch('/api/activities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add activity');
+      }
+
+      await fetchActivities(); // Refresh the list
+      return true;
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
+      return false;
+    }
+  };
+
+  const updateActivity = async (id: string, activityData: UpdateActivityRequest): Promise<boolean> => {
+    try {
+      setError(null);
+      
+      // Prepare data for API
+      const requestData = {
+        ...activityData,
+        recordedAt: activityData.recordedAt instanceof Date 
+          ? activityData.recordedAt.toISOString() 
+          : activityData.recordedAt,
+      };
+
+      const response = await fetch(`/api/activities/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update activity');
+      }
+
+      await fetchActivities(); // Refresh the list
+      return true;
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
+      return false;
+    }
+  };
+
+  const deleteActivity = async (id: string): Promise<boolean> => {
+    try {
+      setError(null);
+      
+      const response = await fetch(`/api/activities/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete activity');
+      }
+
+      await fetchActivities(); // Refresh the list
+      return true;
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
+      return false;
+    }
+  };
+
+  // Helper functions for filtering activities
+  const getActivitiesByChild = (childId: string): Activity[] => {
+    return activities.filter(activity => activity.childId === childId);
+  };
+
+  const getActivitiesByCategory = (category: ActivityCategory): Activity[] => {
+    return activities.filter(activity => activity.category === category);
+  };
+
+  const getActivitiesByDateRange = (startDate: Date, endDate: Date): Activity[] => {
+    return activities.filter(activity => {
+      const activityDate = new Date(activity.recordedAt);
+      return activityDate >= startDate && activityDate <= endDate;
+    });
+  };
+
+  // Fetch activities when user session is available
+  useEffect(() => {
+    if (session?.user) {
+      fetchActivities();
+    }
+  }, [session?.user]);
+
+  const refetch = () => {
+    fetchActivities();
+  };
+
+  return {
+    activities,
+    isLoading,
+    error,
+    addActivity,
+    updateActivity,
+    deleteActivity,
+    refetch,
+    getActivitiesByChild,
+    getActivitiesByCategory,
+    getActivitiesByDateRange,
+  };
+}
+
+// Optional: Create a hook for a specific child's activities
+export function useChildActivities(childId: string) {
+  const { 
+    activities, 
+    isLoading, 
+    error, 
+    addActivity, 
+    updateActivity, 
+    deleteActivity, 
+    refetch 
+  } = useActivities();
+
+  const childActivities = activities.filter(activity => activity.childId === childId);
+
+  const addChildActivity = async (activityData: Omit<CreateActivityRequest, 'childId'>) => {
+    return addActivity({ ...activityData, childId });
+  };
+
+  return {
+    activities: childActivities,
+    isLoading,
+    error,
+    addActivity: addChildActivity,
+    updateActivity,
+    deleteActivity,
+    refetch,
+  };
+}
+
+// Optional: Create a hook for today's activities
+export function useTodaysActivities() {
+  const { activities, isLoading, error, refetch } = useActivities();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const todaysActivities = activities.filter(activity => {
+    const activityDate = new Date(activity.recordedAt);
+    return activityDate >= today && activityDate < tomorrow;
+  });
+
+  return {
+    activities: todaysActivities,
+    isLoading,
+    error,
+    refetch,
+  };
+}
